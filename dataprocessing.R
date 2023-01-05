@@ -15,6 +15,8 @@ stepsums <- as.data.frame(df %>% group_by(date) %>% summarise(totalsteps=sum(ste
 meansteps <- mean(stepsums$totalsteps)
 medsteps <- median(stepsums$totalsteps)
 
+
+
 # average daily activity pattern
 stepmeans <- as.data.frame(df %>% group_by(interval) %>% summarise(meansteps=mean(steps), .groups='drop'))
 maxstepint <- stepmeans[stepmeans$meansteps == max(stepmeans$meansteps),]
