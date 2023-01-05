@@ -1,25 +1,74 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+output: html_document
+html_document: "PA1_template.html"
+keep_md: true
 ---
 
-
 ## Loading and preprocessing the data
-
-
+```{r,echo=TRUE}
+    library(dplyr)
+    datadest <- "activity.zip"
+    dataname <- unzip(datadest, list=TRUE)$Name
+    unzip(datadest)
+    dforig <- read.csv(dataname)
+    df <- dforig[!is.na(dforig$steps),]
+```
 
 ## What is mean total number of steps taken per day?
-
-
+```{r}
+stepsums <- as.data.frame(df %>% group_by(date) %>% summarise(totalsteps=sum(steps), .groups='drop'))
+meansteps <- mean(stepsums$totalsteps)
+medsteps <- median(stepsums$totalsteps)
+hist(stepsums$totalsteps,xlab="Steps Per Day",main="Histogram of Daily Step Count")
+```  
+  
+The mean number of steps taken per day is `r meansteps`.  The median number of steps taken per day is `r medsteps`.  
 
 ## What is the average daily activity pattern?
-
-
-
+```{r}
+stepmeans <- as.data.frame(df %>% group_by(interval) %>% summarise(meansteps=mean(steps), .groups='drop'))
+maxstepint <- stepmeans[stepmeans$meansteps == max(stepmeans$meansteps),]
+plot(stepmeans$interval,stepmeans$meansteps,type='l',xlab='Time Interval (min)',ylab='Average Daily Steps',main='Average Steps Taken in each Time Interval')
+```
+  
+The interval that contains the maximum average number of steps is `r maxstepint$interval` minutes.
+  
 ## Imputing missing values
+```{r}
+totalmissingvals <- sum(is.na(dforig$steps))
+uints <- unique(dforig$interval)
+dffilled <- read.csv(dataname)
+for (tpts in uints) {
+  dffilled[dffilled$interval == tpts & is.na(dffilled$steps),1] = round(stepmeans[stepmeans$interval == tpts,2])
+}
+totalmissingvals1 <- sum(is.na(dffilled$steps))
 
-
+stepsumsf <- as.data.frame(dffilled %>% group_by(date) %>% summarise(totalsteps=sum(steps), .groups='drop'))
+meanstepsf <- mean(stepsumsf$totalsteps)
+medstepsf <- median(stepsumsf$totalsteps)
+dmeanf <- meanstepsf - meansteps
+dmedf <- medstepsf - medsteps
+hist(stepsumsf$totalsteps,xlab="Steps Per Day",main="Histogram of Daily Step Count (NAs Filled)")
+```
+  
+The total number of missing values in the dataset is `r totalmissingvals`.  
+The missing values were filled with the mean of the interval for all days where data was available.  
+The mean total number of daily steps in the new dataset is `r meanstepsf`.  The median is `r medstepsf`.  
+The difference between the mean with imputed values and the mean with missing values is `r dmeanf`.  The difference between medians is `r dmedf`.  
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+library(lattice)
+dffilled$date <- as.Date(dffilled$date)
+dffilled <- dffilled %>% mutate(daytype = factor(weekdays(date) == "Saturday" | weekdays(date) == "Sunday", labels = c("weekday","weekend")))
+avgww <- as.data.frame(dffilled %>% group_by(interval,daytype) %>% summarise(meansteps=mean(steps), .groups='drop'))
+avgww <- avgww[order(avgww$daytype,avgww$interval),]
+xyplot(meansteps~interval | daytype, data = avgww,
+       type='l',
+       layout=c(1,2),
+       xlab="Interval (minutes)",
+       ylab="Average Steps")
+```
+  
+On weekdays, there is a high peak in steps at `r maxstepint$interval` minutes and on weekends activity is more evenly distributed throughout the day.  
